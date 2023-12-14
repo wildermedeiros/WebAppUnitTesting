@@ -49,9 +49,9 @@ namespace WebAppTest
         }
         #endregion
 
-        #region snippet_AddSeller_SingleSeller_DepartmenteShouldBeDepartment
+        #region snippet_AddSeller_SingleSeller_DepartmentShouldBeDepartment
         [Fact]
-        public void AddSeller_SingleSeller_DepartmenteShouldBeDepartment()
+        public void AddSeller_SingleSeller_DepartmentShouldBeDepartment()
         {
             var fixture = CreateFixtureWithoutRecursion();
             var department = fixture.Create<Department>();
@@ -74,6 +74,19 @@ namespace WebAppTest
             department.AddSeller(seller);
 
             seller.Should().NotBeNull();
+        }
+        #endregion
+
+        #region snippet_AddSeller_SingleNullSeller_ThrowsArgumentNullException
+        [Fact]
+        public void AddSeller_SingleNullSeller_ThrowsArgumentNullException()
+        {
+            var fixture = CreateFixtureWithoutRecursion();
+            var department = fixture.Create<Department>();
+
+            Action act = () => department.AddSeller(null);
+
+            act.Should().Throw<ArgumentNullException>();
         }
         #endregion
 
@@ -104,6 +117,23 @@ namespace WebAppTest
             seller.Department.Should().NotBeNull();
         }
         #endregion
+
+        #region snippet_AddSeller_SingleSeller_SellerAddedShouldContainDepartment
+        [Fact]
+        public void AddSeller_SingleAlreadyAdddedSeller_ThrowException()
+        {
+            var fixture = CreateFixtureWithoutRecursion();
+            var department = fixture.Create<Department>();
+            var seller = fixture.Create<Seller>();
+
+            department.AddSeller(seller);
+            Action act2 = () => department.AddSeller(seller);
+
+            act2.Should().Throw<Exception>();
+        }
+        #endregion
+
+        // verificar vendedor existente
 
         private Fixture CreateFixtureWithoutRecursion()
         {

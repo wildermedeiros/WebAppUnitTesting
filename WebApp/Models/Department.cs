@@ -12,6 +12,15 @@ namespace WebApp.Models
 
         public void AddSeller(Seller seller)
         {
+            if (seller == null)
+            {
+                throw new ArgumentNullException(nameof(seller));
+            }
+
+            if (Sellers.Contains(seller))
+            {
+                throw new Exception(nameof(seller));
+            }
             Sellers.Add(seller);
         }
 
