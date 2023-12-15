@@ -3,7 +3,7 @@ using WebApp.Models;
 using AutoFixture;
 using AutoFixture.Xunit2;
 
-namespace WebAppTest
+namespace WebAppTest.Models
 {
     public class DepartmentTest
     {
@@ -17,7 +17,7 @@ namespace WebAppTest
 
             department.AddSeller(seller);
 
-            department.Sellers.Should().NotBeEmpty();  
+            department.Sellers.Should().NotBeEmpty();
         }
         #endregion
 
@@ -118,7 +118,7 @@ namespace WebAppTest
         }
         #endregion
 
-        #region snippet_AddSeller_SingleSeller_SellerAddedShouldContainDepartment
+        #region snippet_AddSeller_SingleAlreadyAdddedSeller_ThrowException
         [Fact]
         public void AddSeller_SingleAlreadyAdddedSeller_ThrowException()
         {
@@ -132,8 +132,6 @@ namespace WebAppTest
             act2.Should().Throw<Exception>();
         }
         #endregion
-
-        // verificar vendedor existente
 
         private Fixture CreateFixtureWithoutRecursion()
         {
