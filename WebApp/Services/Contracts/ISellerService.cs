@@ -1,4 +1,5 @@
-﻿using WebApp.Models;
+﻿using WebApp.DatabaseContext;
+using WebApp.Models;
 
 namespace WebApp.Services.Contracts
 {

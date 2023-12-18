@@ -20,9 +20,9 @@ namespace WebApp.Services
             return await db.Set<Seller>().ToListAsync();
         }
 
-        public async Task InsertAsync(Seller obj)
+        public async Task InsertAsync(Seller seller)
         {
-            await db.Set<Seller>().AddAsync(obj);
+            await db.Set<Seller>().AddAsync(seller);
             await db.Instance.SaveChangesAsync();
             
         }
