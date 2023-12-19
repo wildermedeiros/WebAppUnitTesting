@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace WebApp.Models
 {
@@ -15,6 +16,11 @@ namespace WebApp.Models
         public Department Department { get; set; }
         public int DepartmentId { get; set; }
         public ICollection<SalesRecord> Sales { get; set; } = new List<SalesRecord>();
+
+        public Seller(int id)
+        {
+            this.Id = id;
+        }
 
         public void AddSales(SalesRecord sr)
         {

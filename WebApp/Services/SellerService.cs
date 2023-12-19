@@ -22,7 +22,7 @@ namespace WebApp.Services
 
         public async Task InsertAsync(Seller seller)
         {
-            await db.Set<Seller>().AddAsync(seller);
+            await db.Instance.Set<Seller>().AddAsync(seller);
             await db.Instance.SaveChangesAsync();
             
         }
