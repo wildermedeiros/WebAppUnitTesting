@@ -59,7 +59,8 @@ namespace WebApp.Services
         {
             try
             {
-                await db.Instance.Set<Seller>().SingleOrDefaultAsync(x => x.Id == obj.Id);
+                var seller = await db.Instance.Set<Seller>().SingleOrDefaultAsync(x => x.Id == obj.Id);
+                db.Instance.Set<Seller>().Update(seller);
                 await db.Instance.SaveChangesAsync();
             }
             catch (Exception e)

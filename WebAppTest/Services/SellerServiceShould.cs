@@ -15,7 +15,7 @@ namespace WebAppTest.Services
     public class SellerServiceShould : IDisposable
     {
         private readonly Fixture fixture;
-        private readonly Mock<IDbContext> dbContext;
+        private readonly Mock<IDbContext> mockContext;
         private readonly SellerService sut;
 
         public SellerServiceShould()
@@ -24,9 +24,9 @@ namespace WebAppTest.Services
             fixture.Behaviors.OfType<ThrowingRecursionBehavior>().ToList().ForEach(b => fixture.Behaviors.Remove(b));
             fixture.Behaviors.Add(new OmitOnRecursionBehavior());
 
-            dbContext = new Mock<IDbContext>();
-            dbContext.SetupAllProperties();
-            sut = new SellerService(dbContext.Object);
+            mockContext = new Mock<IDbContext>();
+            mockContext.SetupAllProperties();
+            sut = new SellerService(mockContext.Object);
         }
 
         public void Dispose()
@@ -40,7 +40,7 @@ namespace WebAppTest.Services
             var sellers = fixture.CreateMany<Seller>().AsQueryable().BuildMockDbSet();
 
             // Populei esses dados no meu dbset
-            dbContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
 
             // Quando eu executar esse comando
             var result = await sut.FindAllAsync();
@@ -55,19 +55,19 @@ namespace WebAppTest.Services
         {
             var seller = fixture.Create<Seller>();
 
-            dbContext.Setup(c => c.Instance.Set<Seller>().AddAsync(seller, It.IsAny<CancellationToken>()));
+            mockContext.Setup(c => c.Instance.Set<Seller>().AddAsync(seller, It.IsAny<CancellationToken>()));
 
             await sut.InsertAsync(seller);
 
-            dbContext.Verify(c => c.Instance.Set<Seller>().AddAsync(seller, It.IsAny<CancellationToken>()), Times.Once);
-            dbContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-            dbContext.VerifyNoOtherCalls();
+            mockContext.Verify(c => c.Instance.Set<Seller>().AddAsync(seller, It.IsAny<CancellationToken>()), Times.Once);
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            mockContext.VerifyNoOtherCalls();
         }
 
         // Exemplo de um método que força uma exceção, tende a erro, conforme o tipo de método (FirstAsync, FirstOrDefaultAsync, etc)
         [Theory]
         [InlineData(1, 2)]
-        public async Task NotUpdateInexistentId(int notPersistedId, int persistedId)
+        public async Task NotUpdateInexistentIdWithMockSetup(int notPersistedId, int persistedId)
         {
             var seller = new Seller(notPersistedId);
             var sellers = fixture.Build<Seller>()
@@ -76,7 +76,7 @@ namespace WebAppTest.Services
                 .AsQueryable()
                 .BuildMockDbSet();
 
-            dbContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
 
             var ex = await Assert.ThrowsAsync<Exception>(() => sut.UpdateAsync(seller));
 
@@ -87,7 +87,7 @@ namespace WebAppTest.Services
 
         // Exemplo de um método que lança uma exceção, Mock não tem suporte para SingleOrDefaultAsync method
         [Fact]
-        public async Task ThrowExceptionOnFirstOrDefaultAsync()
+        public async Task ThrowExceptionOnFirstOrDefaultAsyncWithMockSetup()
         {
             var seller = fixture.Create<Seller>();
             seller.Id = 1;
@@ -98,7 +98,7 @@ namespace WebAppTest.Services
                 .AsQueryable()
                 .BuildMockDbSet();
 
-            dbContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
 
             sellers.Setup(s => s.SingleOrDefaultAsync(It.IsAny<Expression<Func<Seller, bool>>>(), It.IsAny<CancellationToken>()))
                 .Throws(new Exception("Throwing a exception"));
@@ -106,7 +106,52 @@ namespace WebAppTest.Services
             var ex = await Assert.ThrowsAsync<Exception>(() => sut.UpdateAsync(seller));
 
             ex.Should().BeOfType<Exception>();
-            dbContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        // Exemplo de um método sem setup dos mocks, para throws, é uma solução pobre, pois tem que forçar um cenário para o teste passar
+        [Fact]
+        public async Task ThrowExceptionManyEqualsId()
+        {
+            var seller = fixture.Create<Seller>();
+            seller.Id = 1;
+
+            var mockSetSeller = fixture.Build<Seller>()
+                .With(s => s.Id, 1)
+                .CreateMany()
+                .AsQueryable()
+                .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(mockSetSeller.Object);
+
+            var ex = await Assert.ThrowsAsync<Exception>(() => sut.UpdateAsync(seller));
+
+            ex.Should().BeOfType<Exception>();
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        // Exemplo de um método sem setup dos mocks
+        [Fact]
+        public async Task UpdateOnSingleOrDefaultId()
+        {
+            var seller = fixture.Create<Seller>();
+            seller.Id = 1;
+
+            var mockSetSeller = fixture.Build<Seller>()
+                .With(s => s.Id, 1)
+                .CreateMany(1)
+                .AsQueryable()
+                .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(mockSetSeller.Object);
+
+            await sut.UpdateAsync(seller);
+
+            mockSetSeller.Object.Should().Contain(s => s.Id == seller.Id);
+
+            // Esse tipo de verificação nao é possível fazer, pois o mockContext não foi preparado para tal
+            //mockContext.Verify(c => c.Instance.Set<Seller>().Update(seller), Times.Once);
+            //mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
         //[Fact]

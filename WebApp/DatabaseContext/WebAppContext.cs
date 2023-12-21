@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
+using WebApp.Models;
 
 namespace WebApp.DatabaseContext
 {
@@ -11,11 +12,14 @@ namespace WebApp.DatabaseContext
 
     public class SalesWebMvcContext : DbContext, IDbContext
     {
-        public DbContext Instance => this;
+        virtual public DbContext Instance => this;
 
         public SalesWebMvcContext(DbContextOptions<SalesWebMvcContext> options): base(options)
         {
         }
+
+        virtual public DbSet<Seller> Seller { get; set; }
+
     }
 
     public static class IDbContextExtensions
