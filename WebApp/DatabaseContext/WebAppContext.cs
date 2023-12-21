@@ -6,11 +6,13 @@ namespace WebApp.DatabaseContext
     public interface IDbContext : IDisposable
     {
         DbContext Instance { get; }
+
     }
 
     public class SalesWebMvcContext : DbContext, IDbContext
     {
         public DbContext Instance => this;
+
         public SalesWebMvcContext(DbContextOptions<SalesWebMvcContext> options): base(options)
         {
         }

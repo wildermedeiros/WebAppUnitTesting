@@ -17,7 +17,7 @@ namespace WebApp.Services
 
         public async Task<List<Seller>> FindAllAsync()
         {
-            return await db.Set<Seller>().ToListAsync();
+            return await db.Instance.Set<Seller>().ToListAsync();
         }
 
         public async Task InsertAsync(Seller seller)
@@ -46,7 +46,7 @@ namespace WebApp.Services
             try
             {
                 var obj = await db.Set<Seller>().FindAsync(id);
-                db.Set<Seller>().Remove(obj);
+                db.Instance.Set<Seller>().Remove(obj);
                 await db.Instance.SaveChangesAsync();
             }
             catch (DbUpdateException e)
@@ -57,19 +57,14 @@ namespace WebApp.Services
 
         public async Task UpdateAsync(Seller obj)
         {
-            bool hasAny = await db.Set<Seller>().AnyAsync(x => x.Id == obj.Id);
-            if (!hasAny)
-            {
-                throw new NotFoundException("Id not found");
-            }
             try
             {
-                db.Instance.Update(obj);
+                await db.Instance.Set<Seller>().SingleOrDefaultAsync(x => x.Id == obj.Id);
                 await db.Instance.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException e)
+            catch (Exception e)
             {
-                throw new DbConcurrencyException(e.Message);
+                throw new Exception(e.Message);
             }
         }
     }

@@ -1,13 +1,9 @@
 ﻿using AutoFixture;
-using AutoFixture.AutoMoq;
-using AutoFixture.Kernel;
-using AutoFixture.Xunit2;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
 using Moq;
-using System.Security.Cryptography.Xml;
+using System.Linq.Expressions;
 using WebApp.DatabaseContext;
 using WebApp.Models;
 using WebApp.Services;
@@ -28,7 +24,8 @@ namespace WebAppTest.Services
             fixture.Behaviors.OfType<ThrowingRecursionBehavior>().ToList().ForEach(b => fixture.Behaviors.Remove(b));
             fixture.Behaviors.Add(new OmitOnRecursionBehavior());
 
-            dbContext = new Mock<IDbContext>(); 
+            dbContext = new Mock<IDbContext>();
+            dbContext.SetupAllProperties();
             sut = new SellerService(dbContext.Object);
         }
 
@@ -64,37 +61,58 @@ namespace WebAppTest.Services
 
             dbContext.Verify(c => c.Instance.Set<Seller>().AddAsync(seller, It.IsAny<CancellationToken>()), Times.Once);
             dbContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            dbContext.VerifyNoOtherCalls();
         }
 
-        [Fact]
-        public async Task NotUpdateInexistentId()
+        // Exemplo de um método que força uma exceção, tende a erro, conforme o tipo de método (FirstAsync, FirstOrDefaultAsync, etc)
+        [Theory]
+        [InlineData(1, 2)]
+        public async Task NotUpdateInexistentId(int notPersistedId, int persistedId)
         {
-            var seller = new Seller(1);
+            var seller = new Seller(notPersistedId);
             var sellers = fixture.Build<Seller>()
-                .With(s => s.Id, 2)
-                .CreateMany(1)
+                .With(s => s.Id, persistedId)
+                .CreateMany()
                 .AsQueryable()
                 .BuildMockDbSet();
 
             dbContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
 
-            var ex = await Assert.ThrowsAsync<NotFoundException>(() => sut.UpdateAsync(seller));
+            var ex = await Assert.ThrowsAsync<Exception>(() => sut.UpdateAsync(seller));
 
-            ex.Should().BeOfType<NotFoundException>();
+            ex.Should().BeOfType<Exception>();
             sellers.Object.Should().NotContain(seller);
             ex.Message.Should().Be("Id not found");
         }
 
+        // Exemplo de um método que lança uma exceção, Mock não tem suporte para SingleOrDefaultAsync method
         [Fact]
-        public async UpdateIfValidId()
+        public async Task ThrowExceptionOnFirstOrDefaultAsync()
         {
+            var seller = fixture.Create<Seller>();
+            seller.Id = 1;
 
+            var sellers = fixture.Build<Seller>()
+                .With(s => s.Id, 1)
+                .CreateMany()
+                .AsQueryable()
+                .BuildMockDbSet();
+
+            dbContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => sellers.Object);
+
+            sellers.Setup(s => s.SingleOrDefaultAsync(It.IsAny<Expression<Func<Seller, bool>>>(), It.IsAny<CancellationToken>()))
+                .Throws(new Exception("Throwing a exception"));
+
+            var ex = await Assert.ThrowsAsync<Exception>(() => sut.UpdateAsync(seller));
+
+            ex.Should().BeOfType<Exception>();
+            dbContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
-        [Fact]
-        public async NotUpdateIfHasConcurrencyOnSaving()
-        {
+        //[Fact]
+        //public async Task UpdateIfValidId()
+        //{
 
-        }
+        //}
     }
 }
