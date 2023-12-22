@@ -200,5 +200,47 @@ namespace WebAppTest.Services
             ex.Should().BeOfType<Exception>();
             mockSetSeller.Object.Should().NotContain(s => s.Id == seller.Id);
         }
+
+        [Fact]
+        public async Task RemoveAsync()
+        {
+            var seller = fixture.Create<Seller>();
+
+            var mockSetSeller = fixture.Build<Seller>()
+               .With(s => s.Id, seller.Id)
+               .CreateMany(1)
+               .AsQueryable()
+               .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(() => mockSetSeller.Object);
+
+            mockSetSeller.Setup(s => s.Remove(seller));
+
+            await sut.RemoveAsync(seller);
+
+            mockSetSeller.Verify(c => c.Remove(seller), Times.Once);
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ThrowDbUpdateExceptionOnRemoveAsync(Seller seller)
+        {
+            var mockSetSeller = fixture.Build<Seller>()
+               .With(s => s.Id, seller.Id)
+               .CreateMany(1)
+               .AsQueryable()
+               .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(mockSetSeller.Object);
+
+            mockSetSeller.Setup(s => s.Remove(seller)).Throws(new IntegrityException("throwing a message"));
+
+            var ex = await Assert.ThrowsAsync<IntegrityException>(() => sut.RemoveAsync(seller));
+
+            ex.Should().BeOfType<IntegrityException>();
+            mockSetSeller.Verify(c => c.Remove(seller), Times.Once);
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }

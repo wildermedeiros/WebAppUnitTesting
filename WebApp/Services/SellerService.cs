@@ -29,7 +29,7 @@ namespace WebApp.Services
 
         public async Task<Seller> FindByIdAsync(int id)
         {
-            var seller = await db.Set<Seller>().FindAsync(id);
+            var seller = await db.Instance.Set<Seller>().FindAsync(id);
             if (seller is null)
             {
                 throw new Exception();
@@ -46,13 +46,8 @@ namespace WebApp.Services
             }
         }
 
-        public async Task RemoveAsync(int id)
+        public async Task RemoveAsync(Seller seller)
         {
-            var seller = await db.Set<Seller>().FindAsync(id);
-            if (seller is null)
-            {
-                throw new Exception();
-            }
             try
             {
                 db.Instance.Set<Seller>().Remove(seller);
