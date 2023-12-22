@@ -29,27 +29,36 @@ namespace WebApp.Services
 
         public async Task<Seller> FindByIdAsync(int id)
         {
-            try 
+            var seller = await db.Set<Seller>().FindAsync(id);
+            if (seller is null)
+            {
+                throw new Exception();
+            }
+            try
             {
                 return await db.Instance.Set<Seller>()
                     .Include(obj => obj.Department)
                     .FirstOrDefaultAsync(obj => obj.Id == id);
             }
-            catch(Exception exception)
+            catch(Exception)
             {
-                throw new NotFoundException("Id not found");
+                throw new Exception();
             }
         }
 
         public async Task RemoveAsync(int id)
         {
+            var seller = await db.Set<Seller>().FindAsync(id);
+            if (seller is null)
+            {
+                throw new Exception();
+            }
             try
             {
-                var obj = await db.Set<Seller>().FindAsync(id);
-                db.Instance.Set<Seller>().Remove(obj);
+                db.Instance.Set<Seller>().Remove(seller);
                 await db.Instance.SaveChangesAsync();
             }
-            catch (DbUpdateException e)
+            catch (DbUpdateException)
             {
                 throw new IntegrityException("Can't delete seller because he/she has sales");
             }

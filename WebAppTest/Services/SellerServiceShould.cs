@@ -1,9 +1,11 @@
 ﻿using AutoFixture;
+using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
 using Moq;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using WebApp.DatabaseContext;
 using WebApp.Models;
@@ -15,7 +17,7 @@ namespace WebAppTest.Services
 {
     public class SellerServiceShould : IDisposable
     {
-        private readonly Fixture fixture;
+        private readonly IFixture fixture;
         private readonly Mock<IDbContext> mockContext;
         private readonly SellerService sut;
 
@@ -112,7 +114,7 @@ namespace WebAppTest.Services
 
         // Exemplo de um método sem setup dos mocks, para throws, é uma solução pobre, pois tem que forçar um cenário para o teste passar
         [Fact]
-        public async Task ThrowExceptionManyEqualsId()
+        public async Task ThrowExceptionManyEqualsIdOnUpdate()
         {
             var seller = fixture.Create<Seller>();
             seller.Id = 1;
@@ -157,10 +159,46 @@ namespace WebAppTest.Services
             //mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        //[Fact]
-        //public async Task UpdateIfValidId()
-        //{
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task FindByIdAsync(Seller seller)
+        {
+            seller.Id = 1;
 
-        //}
+            var mockSetSeller = fixture.Build<Seller>()
+                .With(s => s.Id, 1)
+                .CreateMany()
+                .AsQueryable()
+                .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(mockSetSeller.Object);
+
+            var result = await sut.FindByIdAsync(seller.Id);
+
+            result.Id.Should().Be(seller.Id);
+            result.Should().NotBeNull();
+            mockSetSeller.Object.Should().Contain(s => s.Id == seller.Id);
+        }
+
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ThrowExceptionOnNotFindByIdAsync(Seller seller)
+        {
+            seller.Id = 0;
+
+             var mockSetSeller = fixture.Build<Seller>()
+                .With(s => s.Id, 1)
+                .CreateMany()
+                .AsQueryable()
+                .BuildMockDbSet();
+
+            mockContext.Setup(c => c.Instance.Set<Seller>()).Returns(mockSetSeller.Object);
+
+            var ex = await Assert.ThrowsAsync<Exception>(() => sut.FindByIdAsync(seller.Id));
+
+            ex.Should().BeOfType<Exception>();
+            mockSetSeller.Object.Should().NotContain(s => s.Id == seller.Id);
+        }
     }
 }
