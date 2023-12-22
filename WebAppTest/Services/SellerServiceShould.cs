@@ -1,4 +1,5 @@
 ﻿using AutoFixture;
+using AutoFixture.Xunit2;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
@@ -148,6 +149,8 @@ namespace WebAppTest.Services
             await sut.UpdateAsync(seller);
 
             mockSetSeller.Object.Should().Contain(s => s.Id == seller.Id);
+            mockSetSeller.Verify(s => s.Update(It.IsAny<Seller>()), Times.Once);
+            mockContext.Verify(c => c.Instance.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             // Esse tipo de verificação nao é possível fazer, pois o mockContext não foi preparado para tal
             //mockContext.Verify(c => c.Instance.Set<Seller>().Update(seller), Times.Once);
