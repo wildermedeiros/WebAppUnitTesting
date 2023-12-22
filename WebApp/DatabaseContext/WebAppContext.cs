@@ -10,11 +10,11 @@ namespace WebApp.DatabaseContext
 
     }
 
-    public class SalesWebMvcContext : DbContext, IDbContext
+    public class WebAppContext : DbContext, IDbContext
     {
         virtual public DbContext Instance => this;
 
-        public SalesWebMvcContext(DbContextOptions<SalesWebMvcContext> options): base(options)
+        public WebAppContext(DbContextOptions<WebAppContext> options): base(options)
         {
         }
 
