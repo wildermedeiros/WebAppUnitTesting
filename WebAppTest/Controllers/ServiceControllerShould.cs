@@ -16,6 +16,7 @@ using WebApp.Models;
 using WebApp.Models.ViewModels;
 using WebApp.Services;
 using WebApp.Services.Contracts;
+using WebApp.Services.Exceptions;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebAppTest.Controllers
@@ -107,8 +108,6 @@ namespace WebAppTest.Controllers
         [AutoDataAttributeWebApp]
         public async Task ReturnRedirectToActionWhenNotFoundIdForDelete(Seller seller)
         {
-            seller.Id = 1;
-
             var result = await sut.Delete(seller?.Id);
 
             var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
@@ -127,6 +126,59 @@ namespace WebAppTest.Controllers
             var model = viewResult.Subject.Model.Should().BeOfType<Seller>();
             model.Subject.Should().Be(seller);
             mockSellerService.Verify();
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ReturnToActionErrorIdNotFoundForDelete(int id)
+        {
+            var result = await sut.Delete(id);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Error));
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task RemoveSellerAndRedirectToIndex(Seller seller)
+        {
+            Seller? deletedSeller = null;
+
+            mockSellerService.Setup(x => x.FindByIdAsync(It.IsAny<int>()))
+                .Returns(Task.FromResult(seller))
+                .Verifiable();
+
+            mockSellerService.Setup(x => x.RemoveAsync(It.IsAny<Seller>()))
+                .Returns(Task.CompletedTask)
+                .Callback<Seller>(x => deletedSeller = x)
+                .Verifiable();
+
+            var result = await sut.Delete(seller.Id);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Index));
+            seller.Should().Be(deletedSeller);
+            mockSellerService.Verify();
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task RedirectToErrorWhenException(Seller seller)
+        {
+            mockSellerService.Setup(x => x.FindByIdAsync(It.IsAny<int>()))
+                .Returns(Task.FromResult(seller))
+                .Verifiable();
+
+            mockSellerService.Setup(x => x.RemoveAsync(It.IsAny<Seller>()))
+                .Throws(new IntegrityException("throwing a message"))
+                .Verifiable();
+
+            var result = await sut.Delete(seller.Id);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Error));
+            mockSellerService.Verify();
+
         }
     }
 }
