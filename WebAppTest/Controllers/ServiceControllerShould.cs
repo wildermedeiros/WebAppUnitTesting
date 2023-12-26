@@ -2,6 +2,7 @@
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
+using FluentAssertions.Execution;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System;
@@ -16,8 +17,6 @@ using WebApp.Models.ViewModels;
 using WebApp.Services;
 using WebApp.Services.Contracts;
 
-
-// todo colocar os mocks no construtor, está ocupando espaço como argumento dos metodos
 namespace WebAppTest.Controllers
 {
     public class ServiceControllerShould
@@ -25,6 +24,7 @@ namespace WebAppTest.Controllers
         private readonly IFixture fixture;
         private readonly Mock<ISellerService> mockSellerService;
         private readonly Mock<IDepartmentService> mockDepartmentService;
+        private readonly SellersController sut;
 
 
         public ServiceControllerShould()
@@ -35,14 +35,14 @@ namespace WebAppTest.Controllers
 
             mockSellerService = new Mock<ISellerService>();
             mockDepartmentService = new Mock<IDepartmentService>();
+            sut = new SellersController(mockSellerService.Object, mockDepartmentService.Object);
+
         }
 
         [Theory]
         [AutoDataAttributeWebApp]
         public async Task ReturnViewForIndex(List<Seller> sellers)
         {
-            SellersController sut = new SellersController(mockSellerService.Object, mockDepartmentService.Object);
-            
             mockSellerService.Setup(x => x.FindAllAsync()).Returns(Task.FromResult(sellers));
 
             var result = await sut.Index();
@@ -52,10 +52,8 @@ namespace WebAppTest.Controllers
         }
 
         [Fact]
-        public async Task ReturnViewForCreateGet()
+        public async Task ReturnViewForCreate()
         {
-            SellersController sut = new SellersController(mockSellerService.Object, mockDepartmentService.Object);
-
             var result = await sut.Create();
 
             result.Should().BeOfType<ViewResult>();
@@ -65,32 +63,34 @@ namespace WebAppTest.Controllers
 
         [Theory]
         [AutoDataAttributeWebApp]
-        public async Task ReturnViewWhenInvalidModelStateForCreatePost(string key, Seller seller, string testError)
+        public async Task ReturnViewWhenInvalidModelForCreate(string key, Seller seller, string testError)
         {
-            SellersController sut = new SellersController(mockSellerService.Object, mockDepartmentService.Object);
-
             sut.ModelState.AddModelError(key, testError);
+
             var result = await sut.Create(seller);
 
             var viewResult = result.Should().BeOfType<ViewResult>();
-
-            //result.Should().BeOfType<RedirectToActionResult>();
-            //mockSellerService.Verify(x => x.InsertAsync(It.IsAny<Seller>()), Times.Once);
+            var model = viewResult.Subject.Model.Should().BeOfType<SellerFormViewModel>();
+            model.Subject.Should().BeOfType<SellerFormViewModel>();
+            mockDepartmentService.Verify(x => x.FindAllAsync(), Times.Once);
         }
 
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ReturnRedirectToActionWhenValidModelForCreate(Seller seller)
+        {
+            Seller savedSeller = null;
+            mockSellerService.Setup(x => x.InsertAsync(It.IsAny<Seller>()))
+                .Returns(Task.CompletedTask)
+                .Callback<Seller>(x => savedSeller = x);
 
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create(Seller seller)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        var departments = await _departmentService.FindAllAsync();
-        //        var viewModel = new SellerFormViewModel { Seller = seller, Departments = departments };
-        //        return View(viewModel);
-        //    }
-        //    await _mockSellerService.InsertAsync(seller);
-        //    return RedirectToAction(nameof(Index));
-        //}
+
+            var result = await sut.Create(seller);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Index));
+            mockSellerService.Verify(x => x.InsertAsync(It.IsAny<Seller>()), Times.Once);
+            seller.Should().Be(savedSeller);
+        }
     }
 }
