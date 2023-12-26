@@ -27,6 +27,7 @@ namespace WebApp.Services
             
         }
 
+        // A busca por id está se perdendo, buscar o id passando o objeto já funcionou com outro exemplo
         public async Task<Seller> FindByIdAsync(int id)
         {
             var seller = await db.Instance.Set<Seller>().FindAsync(id);

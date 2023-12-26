@@ -16,6 +16,7 @@ using WebApp.Models;
 using WebApp.Models.ViewModels;
 using WebApp.Services;
 using WebApp.Services.Contracts;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebAppTest.Controllers
 {
@@ -79,7 +80,7 @@ namespace WebAppTest.Controllers
         [AutoDataAttributeWebApp]
         public async Task ReturnRedirectToActionWhenValidModelForCreate(Seller seller)
         {
-            Seller savedSeller = null;
+            Seller? savedSeller = null;
             mockSellerService.Setup(x => x.InsertAsync(It.IsAny<Seller>()))
                 .Returns(Task.CompletedTask)
                 .Callback<Seller>(x => savedSeller = x);
@@ -91,6 +92,41 @@ namespace WebAppTest.Controllers
             redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Index));
             mockSellerService.Verify(x => x.InsertAsync(It.IsAny<Seller>()), Times.Once);
             seller.Should().Be(savedSeller);
+        }
+
+        [Fact]
+        public async Task ReturnRedirectToActionWhenNullIdForDelete()
+        {
+            var result = await sut.Delete(null);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Error));
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ReturnRedirectToActionWhenNotFoundIdForDelete(Seller seller)
+        {
+            seller.Id = 1;
+
+            var result = await sut.Delete(seller?.Id);
+
+            var redirectToActionResult = result.Should().BeOfType<RedirectToActionResult>();
+            redirectToActionResult.Subject.ActionName.Should().Be(nameof(SellersController.Error));
+        }
+
+        [Theory]
+        [AutoDataAttributeWebApp]
+        public async Task ReturnViewResultForDelete(Seller seller)
+        {
+            mockSellerService.Setup(x => x.FindByIdAsync(It.IsAny<int>())).Returns(Task.FromResult(seller)).Verifiable();
+
+            var result = await sut.Delete(seller?.Id);
+
+            var viewResult = result.Should().BeOfType<ViewResult>();
+            var model = viewResult.Subject.Model.Should().BeOfType<Seller>();
+            model.Subject.Should().Be(seller);
+            mockSellerService.Verify();
         }
     }
 }
